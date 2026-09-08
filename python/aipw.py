@@ -2,7 +2,7 @@ import numpy as np
 from covariance import pairwise_cov
 from utils import outer_array
 
-def aipw_z(X, Z, pi):
+def aipw_z(X, Z, pi, return_diagnostics=False):
     n, p = X.shape
     R = (~np.isnan(X)).astype(float)
     XR = np.where(~np.isnan(X), X, 0.0)
@@ -34,4 +34,14 @@ def aipw_z(X, Z, pi):
     A1 = M1 + (W1 * R) * (XR - M1)
     A2 = M2 + (W2 * outer_array(R)) * (outer_array(XR) - M2)
 
-    return A2.mean(axis=2) - np.outer(A1.mean(axis=0), A1.mean(axis=0))
+    covariance = A2.mean(axis=2) - np.outer(A1.mean(axis=0), A1.mean(axis=0))
+    if not return_diagnostics:
+        return covariance
+
+    return covariance, {
+        "alpha_beta": beta,
+        "conditional_mean": M1,
+        "residual_covariance": sig_e,
+        "first_moment_contribution": A1,
+        "second_moment_contribution": A2,
+    }

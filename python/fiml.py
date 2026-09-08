@@ -53,8 +53,32 @@ def _em_step(X, mu, Sigma):
     return mu_new, Sigma_new
 
 
+def _conditional_mean(X, mu, Sigma):
+    """Return E[X | observed entries] under the fitted normal model."""
+    completed = np.where(np.isnan(X), mu, X).copy()
+    patterns, inverse = np.unique(~np.isnan(X), axis=0, return_inverse=True)
+
+    for pat_idx, pattern in enumerate(patterns):
+        group = np.where(inverse == pat_idx)[0]
+        observed = np.where(pattern)[0]
+        missing = np.where(~pattern)[0]
+        if len(observed) == 0 or len(missing) == 0:
+            continue
+
+        Soo = Sigma[np.ix_(observed, observed)]
+        Smo = Sigma[np.ix_(missing, observed)]
+        try:
+            weights = np.linalg.solve(Soo, Smo.T).T
+        except np.linalg.LinAlgError:
+            weights = Smo @ np.linalg.pinv(Soo)
+        completed[np.ix_(group, missing)] = (
+            mu[missing] + (X[np.ix_(group, observed)] - mu[observed]) @ weights.T
+        )
+    return completed
+
+
 # Full Information Maximum Likelihood covariance estimator via EM
-def fiml(X, max_iter=500, tol=1e-8):
+def fiml(X, max_iter=500, tol=1e-8, return_diagnostics=False):
     n, p  = X.shape
     mu    = np.nanmean(X, axis=0)
     mu    = np.where(np.isnan(mu), 0.0, mu)
@@ -64,10 +88,18 @@ def fiml(X, max_iter=500, tol=1e-8):
         if Sigma[j, j] <= 0:
             Sigma[j, j] = np.nanvar(X[:, j]) if not np.all(np.isnan(X[:, j])) else 1.0
 
-    for _ in range(max_iter):
+    iterations = 0
+    for iterations in range(1, max_iter + 1):
         mu_new, Sigma_new = _em_step(X, mu, Sigma)
         if np.max(np.abs(Sigma_new - Sigma)) < tol:
             break
         mu, Sigma = mu_new, Sigma_new
 
-    return Sigma_new
+    if not return_diagnostics:
+        return Sigma_new
+
+    return Sigma_new, {
+        "mean": mu_new,
+        "imputed_mean": _conditional_mean(X, mu_new, Sigma_new),
+        "iterations": np.array(iterations),
+    }
