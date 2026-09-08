@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.Rhistory
+*.RData
+*.rds
+
+# Local tool configuration
+.claude/settings.local.json
