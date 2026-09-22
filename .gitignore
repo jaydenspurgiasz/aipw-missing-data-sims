@@ -8,3 +8,5 @@ __pycache__/
 
 # Local tool configuration
 .claude/settings.local.json
+
+statsfest_poster.tex
