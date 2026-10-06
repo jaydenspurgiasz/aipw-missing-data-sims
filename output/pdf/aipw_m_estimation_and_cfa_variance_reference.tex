@@ -1,0 +1,168 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.65in]{geometry}
+\usepackage{amsmath,amssymb,booktabs,tabularx,array,enumitem}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlist[itemize]{nosep,leftmargin=14pt}
+\renewcommand{\arraystretch}{1.15}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\vech}{\operatorname{vech}}
+\newcommand{\diag}{\operatorname{diag}}
+
+\begin{document}
+
+{\LARGE\bfseries AIPW M-estimation and CFA variance reference}\par
+\smallskip
+\textbf{Purpose.} Fast reference for the estimator, analytic AIPW Jacobian, sandwich variance, CFA Jacobian, simulation metrics, and current CFA limitations.
+
+\section*{1. Target and reported parameter blocks}
+\[
+\Sigma=E[XX^T]-\mu\mu^T,\qquad
+\gamma=(\mu,\nu),\quad \mu=E[X],\quad \nu=\vech(E[XX^T]).
+\]
+
+\begin{tabularx}{\linewidth}{@{}l c Y Y@{}}
+\toprule
+Block & Count & Estimated quantity & Calculation \\
+\midrule
+$\beta$ & 12 & Outcome-model intercept and $Z$ slope for each of 6 outcomes & Observed-case linear score \\
+$\alpha$ & 2 & Shared logistic response-model coefficients & Binomial-logit response score \\
+$\gamma=(\mu,\nu)$ & 27 & 6 means and 21 raw second moments & AIPW moment equations \\
+$(\Lambda,\Phi,\Omega)$ & 13 & 6 loadings, 1 factor correlation, 6 uniquenesses & Two-factor CFA fitted to $\Sigma$ \\
+\bottomrule
+\end{tabularx}
+
+Default report: $(\beta,\alpha,\gamma,\Lambda,\Phi,\Omega)$, 54 coordinates. $\psi$ is the estimating-function vector, not another parameter block. The code additionally estimates residual means $\rho$ and residual covariance $\sigma$ internally. They are needed for correct uncertainty propagation but are not primary reported targets.
+
+\section*{2. Estimating equations}
+Let $m_{ij}=z_i^T\beta_j$, $\pi_i=\operatorname{expit}(z_i^T\alpha)$, $q_{ijk}=m_{ij}m_{ik}+\sigma_{jk}$, and $w_{ijk}=R_{ij}R_{ik}/\pi_i^e$, where $e=1$ if $j=k$ and $e=2$ otherwise.
+
+\begin{align*}
+\psi_{\beta_j,i} &= R_{ij}z_i(X_{ij}-z_i^T\beta_j),\\
+\psi_{\alpha,i} &= z_i\left(\sum_jR_{ij}-p\pi_i\right),\\
+\psi_{\mu_j,i} &= m_{ij}+\frac{R_{ij}}{\pi_i}(X_{ij}-m_{ij})-\mu_j,\\
+\psi_{\nu_{jk},i} &= q_{ijk}+w_{ijk}(X_{ij}X_{ik}-q_{ijk})-\nu_{jk}.
+\end{align*}
+
+The fitted values solve $n^{-1}\sum_i\psi_i(\hat\theta)=0$. Thus $\hat\gamma$ is exactly the AIPW estimate of the first and raw second moments.
+
+\section*{3. Analytic AIPW Jacobian}
+\[
+A=\frac{1}{n}\sum_{i=1}^n\frac{\partial\psi_i}{\partial\theta^T}.
+\]
+
+\begin{tabularx}{\linewidth}{@{}l Y Y@{}}
+\toprule
+Derivative & Formula or computation & Interpretation \\
+\midrule
+$\partial\psi_{\mu_j}/\partial\mu_j$ & $-1$ & Moment parameter is directly targeted. \\
+$\partial\psi_{\mu_j}/\partial\beta_j$ & $(1-R_{ij}/\pi_i)z_i$ & Outcome-model uncertainty enters $\mu_j$. \\
+$\partial\psi_{\mu_j}/\partial\alpha$ & $-[R_{ij}/\pi_i](X_{ij}-m_{ij})(1-\pi_i)z_i$ & Propensity uncertainty enters $\mu_j$. \\
+$\partial\psi_{\nu_{jk}}/\partial\nu_{jk}$ & $-1$ & Raw second moment is directly targeted. \\
+$\partial\psi_{\nu_{jk}}/\partial\beta$ & Differentiate $q_{ijk}$; diagonal uses $2m_{ij}z_i$, off diagonal uses $m_{ik}z_i$ or $m_{ij}z_i$ & Outcome-model uncertainty enters $\nu_{jk}$. \\
+$\partial\psi_{\nu_{jk}}/\partial\alpha$ & $-e\,w_{ijk}(X_{ij}X_{ik}-q_{ijk})(1-\pi_i)z_i$ & Propensity uncertainty enters $\nu_{jk}$. \\
+\bottomrule
+\end{tabularx}
+
+The meaningful block pattern is
+\[
+\begin{array}{c|cccc}
+ & \beta & \alpha & \gamma & (\Lambda,\Phi,\Omega)\\ \hline
+\psi_\beta & A_{\beta\beta} & 0 & 0 & 0\\
+\psi_\alpha & 0 & A_{\alpha\alpha} & 0 & 0\\
+\psi_\gamma & A_{\gamma\beta} & A_{\gamma\alpha} & -I & 0\\
+\psi_{\mathrm{CFA}} & 0 & 0 & A_{\mathrm{CFA},\gamma} & A_{\mathrm{CFA},\mathrm{CFA}}
+\end{array}.
+\]
+
+\section*{4. Sandwich variance and covariance map}
+\[
+B=\frac{1}{n}\sum_i\psi_i\psi_i^T,\qquad
+\widehat V_\theta=A^{-1}BA^{-T}/n.
+\]
+
+The diagonal of $\widehat V_\theta$ contains marginal variances; its square roots are standard errors. For the covariance map, $\Sigma_{jk}=\nu_{jk}-\mu_j\mu_k$, so
+\[
+\frac{\partial\Sigma_{jk}}{\partial\nu_{jk}}=1,\qquad
+\frac{\partial\Sigma_{jk}}{\partial\mu_\ell}
+=-\mathbf1(\ell=j)\mu_k-\mathbf1(\ell=k)\mu_j.
+\]
+If $D=\partial\vech(\Sigma)/\partial\gamma^T$, then
+\[
+\widehat V_{\vech(\Sigma)}=D\widehat V_\gamma D^T.
+\]
+
+\section*{5. CFA fit and the computational CFA Jacobian}
+The CFA map is $h:\vech(S)\mapsto(\hat\Lambda,\hat\Phi,\hat\Omega)$, with $S=\hat\Sigma_{\mathrm{AIPW}}$. The implementation uses the Gaussian covariance objective
+\[
+\frac{n}{2}\left\{\log|\Sigma_{\mathrm{CFA}}|+\operatorname{tr}(S\Sigma_{\mathrm{CFA}}^{-1})\right\}
+\]
+and L-BFGS-B through \texttt{factor\_analyzer}.
+
+\textbf{How $G=\partial h/\partial\vech(S)^T$ is computed.}
+There are $6(6+1)/2=21$ unique entries of $S$. For coordinate $\ell$ corresponding to $(j,k)$:
+\begin{enumerate}[nosep,leftmargin=18pt]
+\item Set $h_\ell=c\sqrt{S_{jj}S_{kk}}$; $c$ is a relative step size.
+\item Form $S^+=S+h_\ell H_\ell$ and $S^-=S-h_\ell H_\ell$. If $j\ne k$, $H_\ell$ changes \emph{both} $S_{jk}$ and $S_{kj}$ by one. No factor of one-half is used.
+\item Require both perturbed matrices to be positive definite.
+\item Refit CFA to $S^+$ and $S^-$. Align each loading block's sign to the base fit; adjust the factor correlation for any sign flip.
+\item Store the central difference column:
+\[
+G_{\cdot\ell}=\frac{h(S^+)-h(S^-)}{2h_\ell}.
+\]
+\end{enumerate}
+
+Then
+\[
+\widehat V_{\mathrm{CFA}}=G\widehat V_{\vech(S)}G^T.
+\]
+No additional division by $n$ is allowed: the incoming sandwich covariance already includes $1/n$.
+
+\section*{6. Simulation metrics and execution}
+\begin{tabularx}{\linewidth}{@{}l Y Y@{}}
+\toprule
+Metric & Calculation & Use \\
+\midrule
+Empirical variance & Sample covariance of estimates over successful replications & Monte Carlo benchmark \\
+Predicted variance & Mean of per-replication sandwich covariance matrices & M-estimation prediction \\
+Variance ratio & Predicted marginal variance / empirical marginal variance & Target: near 1 \\
+Contribution & Parameter marginal variance divided by trace of the reported 54-coordinate covariance & Share of displayed marginal uncertainty \\
+Total variance & $\operatorname{tr}(V)=\sum_rV_{rr}$ & Compact accounting summary only \\
+\bottomrule
+\end{tabularx}
+
+The 54-coordinate trace includes both $\gamma$ and its derived CFA parameters. It is not an independent-information total; for inference use an individual variance or the relevant covariance block.
+
+\begin{itemize}
+\item \textbf{Real data / one sample:} 3 finite-difference step sizes and 3 random directional checks.
+\item \textbf{Simulation pilot:} same full validation when \texttt{RUN\_DERIVATIVE\_VALIDATION=True}.
+\item \textbf{Simulation production:} one prevalidated $10^{-5}$ step and no repeated directional checks; joblib process parallelism with a progress bar. This shortcut does not alter the one-sample M-estimation calculation.
+\end{itemize}
+
+\section*{7. Current CFA limitations and checks}
+\begin{tabularx}{\linewidth}{@{}l Y Y@{}}
+\toprule
+Issue & Why it matters & Current handling \\
+\midrule
+PSD projection & Eigenvalue clipping is nonsmooth; differentiating through it is invalid. & Use raw positive-definite AIPW covariance and reject non-PD perturbations. \\
+Numerical derivative & $G$ may depend on step size or optimizer noise. & Pilot compares three step sizes and random directional derivatives. \\
+Optimizer status & A finite output is not a complete convergence diagnostic. & Current wrapper checks finite/structural validity; expose optimizer diagnostics in future work. \\
+Identification & Equivalent sign orientations can jump across CFA refits. & Canonicalize base solution and sign-align perturbations. \\
+Boundary solutions & Heywood cases and factor correlation near $\pm1$ weaken local normal theory. & Reject nonpositive uniquenesses, near-zero loading blocks, and $|\phi|\ge0.999$. \\
+Auxiliary $\rho,\sigma$ & Omitting their estimation uncertainty understates variance. & Include internally in sandwich; hide from default report. \\
+Simulation failures & Dropping failures can bias calibration. & Record failure count and reasons before interpreting results. \\
+\bottomrule
+\end{tabularx}
+
+\section*{8. Quick review checklist}
+\begin{itemize}
+\item Verify max absolute mean $\psi$ for $\beta$, $\alpha$, and $\gamma$ is near zero.
+\item Check bread conditioning and positive definiteness of the raw AIPW covariance.
+\item Run the full derivative-validation pilot before a production simulation.
+\item Inspect CFA step-size stability, directional-check error, and failed-replication log.
+\item Compare predicted and empirical variance parameter by parameter; do not rely on a trace ratio alone.
+\end{itemize}
+
+\end{document}
