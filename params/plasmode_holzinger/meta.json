@@ -1,0 +1,11 @@
+{
+  "source": "lavaan::HolzingerSwineford1939",
+  "n_obs_fit": 301,
+  "variables": ["x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9"],
+  "factors": ["visual", "textual", "speed"],
+  "std_lv": true,
+  "model": "visual  =~ x1 + x2 + x3\n  textual =~ x4 + x5 + x6\n  speed   =~ x7 + x8 + x9",
+  "lavaan_converged": true,
+  "created": "2026-11-23 22:27:59 UTC"
+}
+

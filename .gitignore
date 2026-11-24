@@ -1,12 +1,65 @@
+# Python envs / caches
 .venv/
+python/.venv/
+venv/
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.Python
+
+# Jupyter
 .ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# R
 *.Rhistory
 *.RData
 *.rds
+*.Rproj.user/
 
-# Local tool configuration
+# Local / editor
 .claude/settings.local.json
+.codex-remote-attachments/
+.DS_Store
+Thumbs.db
+*.swp
+*~
 
+# Simulation outputs (keep README placeholders)
+runs/**
+!runs/README.md
+legacy/runs/
+logs/
+logs_scratch/
+tmp/
+*.npz
+*.pkl
+*.pickle
+*.zip
+
+# Notebook binary dumps
+notebooks/*.npz
+notebooks/**/*.npz
+
+# Local scratch / agent debris
+agent_sim/
+poster_aipw.txt
+
+# Hoffman / cluster local logs if created in-tree
+cluster/hoffman2/*.out
+cluster/hoffman2/*.err
+
+# TeX build junk
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
 statsfest_poster.tex

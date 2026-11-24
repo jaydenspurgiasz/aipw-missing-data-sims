@@ -1,0 +1,94 @@
+\documentclass[10pt]{article}
+\usepackage[letterpaper,margin=.67in]{geometry}
+\usepackage{amsmath,amssymb,xcolor}
+\usepackage[colorlinks=true,urlcolor=blue!60!black]{hyperref}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+\setlength{\abovedisplayshortskip}{4pt}
+\setlength{\belowdisplayshortskip}{4pt}
+\pagestyle{empty}
+\newcommand{\noteheading}[1]{\par\medskip{\large\bfseries #1}\par\nobreak}
+\newcommand{\coderef}[2]{\href{file:///C:/Users/spurg/Documents/Research/missing_data_2/python/#1}{\texttt{\detokenize{#1}:#2}}}
+\begin{document}
+{\LARGE\bfseries DRFA paper run notes}\par
+\noteheading{Constants}
+\(R=1000,\quad N\in\{250,500,1000\},\quad \text{seed}=20261026\)
+(\coderef{run_drfa_paper_study.py}{15})
+\[
+\operatorname{Cov}(X_1,\ldots,X_6,Z)=
+\begin{pmatrix}
+1 & .640 & .640 & .192 & .192 & .192 & .640\\
+.640 & 1 & .640 & .192 & .192 & .192 & .640\\
+.640 & .640 & 1 & .192 & .192 & .192 & .640\\
+.192 & .192 & .192 & 1 & .640 & .640 & .640\\
+.192 & .192 & .192 & .640 & 1 & .640 & .640\\
+.192 & .192 & .192 & .640 & .640 & 1 & .640\\
+.640 & .640 & .640 & .640 & .640 & .640 & 1
+\end{pmatrix}.
+\]
+(\coderef{dgp.py}{39})
+
+\noteheading{DGP}
+\(\operatorname{Cov}(X_j,Z)=0.64\) for every \(j\). (\coderef{dgp.py}{48})
+
+\((X_{i1},\ldots,X_{i6},Z_i)^\top
+\sim \mathcal N_7(2\mathbf 1_7,\operatorname{Cov}(X_1,\ldots,X_6,Z))\).
+(\coderef{dgp.py}{51})
+\[
+\pi_i=P(R_{ij}=1\mid Z_i)=\frac{1}{1+e^{-(Z_i-0.6)}},
+\qquad R_{ij}\mid Z_i\sim\operatorname{Bernoulli}(\pi_i).
+\]
+(\coderef{dgp.py}{55}, \coderef{dgp.py}{62})
+
+\noteheading{Equations}
+\[
+\widehat m_j(Z_i):=\widehat{\mathbb E}[X_{ij}\mid Z_i]
+=\widehat\beta_{0j}+\widehat\beta_{1j}Z_i.
+\]
+Linear regression with betas fit on observed \(X\) values. (\coderef{aipw_m_estimation.py}{259})
+\[
+\widehat\pi(Z_i):=\widehat P(R_{ij}=1\mid Z_i)
+=\frac{1}{1+e^{-(\widehat\alpha_0+\widehat\alpha_1Z_i)}}.
+\]
+Logistic regression with alphas fit on observed counts out of six. (\coderef{aipw_m_estimation.py}{275})
+
+Fit and predict with either \(Z_i\) or \(Z_i^2\) for each model.
+(\coderef{drfa_simulation.py}{168}, \coderef{aipw_m_estimation.py}{57})
+\[
+\begin{aligned}
+\widehat{\mathbb E}[X_j]
+&=\frac1n\sum_{i=1}^n\left[\widehat m_{ij}
++\frac{R_{ij}}{\widehat\pi_i}(X_{ij}-\widehat m_{ij})\right],\\
+\widehat{\mathbb E}[X_jX_k]
+&=\frac1n\sum_{i=1}^n\left[\widehat q_{ijk}
++\frac{R_{ij}R_{ik}}{\widehat\pi_i^2}
+(X_{ij}X_{ik}-\widehat q_{ijk})\right],\qquad j\ne k.
+\end{aligned}
+\]
+(\coderef{aipw_m_estimation.py}{329})
+
+Here \(\widehat q_{ijk}=\widehat m_{ij}\widehat m_{ik}+\widehat\sigma_{jk}\),
+where \(\widehat\sigma_{jk}\) is the residual covariance between items \(j\) and \(k\).
+(\coderef{aipw_m_estimation.py}{295}, \coderef{aipw_m_estimation.py}{331})
+
+Construct \(\widehat{\operatorname{Cov}}_{\mathrm{AIPW}}=S\), where
+\(S_{jk}=\widehat{\mathbb E}[X_jX_k]-\widehat{\mathbb E}[X_j]\,\widehat{\mathbb E}[X_k]\).
+(\coderef{aipw_m_estimation.py}{373})
+
+\noteheading{CFA}
+Use \(\Sigma(\theta)=\Lambda\Phi\Lambda^\top+\Omega\). (\coderef{torch_cfa.py}{126})
+\[
+\text{Minimize}\qquad
+L(\theta;S)=\frac12\left[\log|\Sigma(\theta)|
++\operatorname{tr}\!\left(S\,\Sigma(\theta)^{-1}\right)\right].
+\qquad\text{(\coderef{torch_cfa.py}{92})}
+\]
+Optimizer: PyTorch L-BFGS, followed by up to four Newton refinement steps.
+(\coderef{torch_cfa.py}{44}, \coderef{torch_cfa.py}{234})
+
+Try three starts and check agreement among admissible fits. At least two must agree.
+\newline
+(\coderef{torch_cfa.py}{161}, \coderef{torch_cfa.py}{222})
+\end{document}

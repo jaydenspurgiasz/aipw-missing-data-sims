@@ -1,0 +1,84 @@
+\documentclass[10pt]{article}
+\usepackage[letterpaper,margin=.67in]{geometry}
+\usepackage{amsmath,amssymb,xcolor}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+\setlength{\abovedisplayshortskip}{4pt}
+\setlength{\belowdisplayshortskip}{4pt}
+\pagestyle{empty}
+\newcommand{\noteheading}[1]{\par\medskip{\large\bfseries #1}\par\nobreak}
+\begin{document}
+{\LARGE\bfseries DRFA paper run notes}\par
+\noteheading{Constants}
+\(R=1000,\quad N\in\{250,500,1000\},\quad \text{seed}=20261026\)
+
+\[
+\operatorname{Cov}(X_1,\ldots,X_6,Z)=
+\begin{pmatrix}
+1 & .640 & .640 & .192 & .192 & .192 & .640\\
+.640 & 1 & .640 & .192 & .192 & .192 & .640\\
+.640 & .640 & 1 & .192 & .192 & .192 & .640\\
+.192 & .192 & .192 & 1 & .640 & .640 & .640\\
+.192 & .192 & .192 & .640 & 1 & .640 & .640\\
+.192 & .192 & .192 & .640 & .640 & 1 & .640\\
+.640 & .640 & .640 & .640 & .640 & .640 & 1
+\end{pmatrix}.
+\]
+
+\noteheading{DGP}
+\(\operatorname{Cov}(X_j,Z)=0.64\) for every \(j\).
+
+\((X_{i1},\ldots,X_{i6},Z_i)^\top
+\sim \mathcal N_7(2\mathbf 1_7,\operatorname{Cov}(X_1,\ldots,X_6,Z))\).
+
+\[
+\pi_i=P(R_{ij}=1\mid Z_i)=\frac{1}{1+e^{-(Z_i-0.6)}},
+\qquad R_{ij}\mid Z_i\sim\operatorname{Bernoulli}(\pi_i).
+\]
+
+\noteheading{Equations}
+\[
+\widehat m_j(Z_i):=\widehat{\mathbb E}[X_{ij}\mid Z_i]
+=\widehat\beta_{0j}+\widehat\beta_{1j}Z_i.
+\]
+Linear regression with betas fit on observed \(X\) values.
+\[
+\widehat\pi(Z_i):=\widehat P(R_{ij}=1\mid Z_i)
+=\frac{1}{1+e^{-(\widehat\alpha_0+\widehat\alpha_1Z_i)}}.
+\]
+Logistic regression with alphas fit on observed counts out of six.
+
+Fit and predict with either \(Z_i\) or \(Z_i^2\) for each model.
+
+\[
+\begin{aligned}
+\widehat{\mathbb E}[X_j]
+&=\frac1n\sum_{i=1}^n\left[\widehat m_{ij}
++\frac{R_{ij}}{\widehat\pi_i}(X_{ij}-\widehat m_{ij})\right],\\
+\widehat{\mathbb E}[X_jX_k]
+&=\frac1n\sum_{i=1}^n\left[\widehat q_{ijk}
++\frac{R_{ij}R_{ik}}{\widehat\pi_i^2}
+(X_{ij}X_{ik}-\widehat q_{ijk})\right],\qquad j\ne k.
+\end{aligned}
+\]
+
+Here \(\widehat q_{ijk}=\widehat m_{ij}\widehat m_{ik}+\widehat\sigma_{jk}\),
+where \(\widehat\sigma_{jk}\) is the residual covariance between items \(j\) and \(k\).
+
+Construct \(\widehat{\operatorname{Cov}}_{\mathrm{AIPW}}=S\), where
+\(S_{jk}=\widehat{\mathbb E}[X_jX_k]-\widehat{\mathbb E}[X_j]\,\widehat{\mathbb E}[X_k]\).
+
+\noteheading{CFA}
+Use \(\Sigma(\theta)=\Lambda\Phi\Lambda^\top+\Omega\).
+\[
+\text{Minimize}\qquad
+L(\theta;S)=\frac12\left[\log|\Sigma(\theta)|
++\operatorname{tr}\!\left(S\,\Sigma(\theta)^{-1}\right)\right].
+\]
+Optimizer: PyTorch L-BFGS, followed by up to four Newton refinement steps.
+
+Try three starts and check agreement among admissible fits. At least two must agree.
+
+\end{document}

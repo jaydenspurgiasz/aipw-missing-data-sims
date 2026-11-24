@@ -1,20 +1,29 @@
+import json
+import re
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from tqdm.auto import tqdm
-
-from dgp import DGPTwoFac
-from covariance import pairwise_cov, complete_case_cov
-from aipw import aipw_z
-from fiml import fiml
-from utils import psd_project, is_invertible
-from cfa import cfa_two_factor, cfa_pass
-from metrics import result_table
-import re
-import json
-from pathlib import Path
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
+from tqdm.auto import tqdm
+
+_SCRIPTS = Path(__file__).resolve().parent
+_ROOT = _SCRIPTS.parent
+for _path in (_SCRIPTS, _ROOT):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
+
+from aipw import aipw_z
+from cfa import cfa_pass, cfa_two_factor
+from covariance import complete_case_cov, pairwise_cov
+from dgp import DGPTwoFac
+from fiml import fiml
+from metrics import result_table
+from utils import is_invertible, psd_project
+
 
 
 class Simulation:
@@ -40,7 +49,7 @@ class Simulation:
     ]
 
     def __init__(self, n, r, seed=None, save_data=False,
-                 output_dir="simulation_output", **dgp_kw):
+                 output_dir="runs/simulation_default", **dgp_kw):
         self.n = n
         self.r = r
         self.seed = seed
